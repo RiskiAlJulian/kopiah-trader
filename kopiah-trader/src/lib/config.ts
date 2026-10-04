@@ -21,3 +21,11 @@ export const SYMBOLS = [
 ] as const
 export const providerSymbol = (id: string) => SYMBOLS.find((s) => s.id === id)?.provider ?? id
 export const symbolName = (id: string) => SYMBOLS.find((s) => s.id === id)?.name ?? id
+
+// Pemetaan ke kode simbol TradingView (format EXCHANGE:SYMBOL) untuk widget chart resmi TradingView.
+// OANDA dipilih karena feed-nya umum dipakai & gratis diakses lewat widget publik TradingView.
+const TV_SYMBOL: Record<string, string> = {
+  XAUUSD: 'OANDA:XAUUSD', EURUSD: 'OANDA:EURUSD', GBPUSD: 'OANDA:GBPUSD',
+  USDJPY: 'OANDA:USDJPY', BTCUSD: 'COINBASE:BTCUSD'
+}
+export const tradingViewSymbol = (id: string) => TV_SYMBOL[id] ?? `OANDA:${id}`
