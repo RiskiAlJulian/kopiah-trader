@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
-import PriceBlock from '../components/PriceBlock'
+import TradingViewSymbolInfo from '../components/TradingViewSymbolInfo'
 
 export default function HomePage() {
   return (
@@ -14,7 +14,7 @@ export default function HomePage() {
           <Link to="/market" className="rounded-full border border-charcoal px-5 py-2.5 font-semibold hover:bg-softgray/50">LIHAT MARKET</Link>
         </div>
       </section>
-      <section><PriceBlock id="XAUUSD" /></section>
+      <section><TradingViewSymbolInfo symbolId="XAUUSD" /></section>
     </div>
   )
 }
