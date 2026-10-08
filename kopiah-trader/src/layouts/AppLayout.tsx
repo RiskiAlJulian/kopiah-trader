@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { BarChart3, BookOpen, Bot, Calculator, Home, LogIn, LogOut, Newspaper, NotebookPen, Radio, User, Users, Download } from 'lucide-react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { BarChart3, BookOpen, Bot, Calculator, Home, LogIn, LogOut, Newspaper, NotebookPen, Radio, User, Users, Download, Menu, X } from 'lucide-react'
 import Logo from '../components/Logo'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -12,10 +12,16 @@ const ALL = [
   { to: '/community', label: 'Community', icon: Users }, { to: '/profile', label: 'Profile', icon: User }
 ]
 const MOBILE = ['/', '/market', '/academy', '/journal', '/profile']
+// Menu yang tidak muat di bar bawah HP -> dibuka lewat tombol "Menu".
+const MORE = ALL.filter((n) => !MOBILE.includes(n.to))
 
 export default function AppLayout() {
   const { user, signOut, hasSupabase } = useAuth()
   const [prompt, setPrompt] = useState<any>(null)
+  const { pathname } = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
+  useEffect(() => { setMoreOpen(false) }, [pathname]) // tutup panel setiap pindah halaman
+  const moreActive = MORE.some((n) => pathname.startsWith(n.to))
   useEffect(() => {
     const h = (e: Event) => { e.preventDefault(); setPrompt(e) }
     window.addEventListener('beforeinstallprompt', h); return () => window.removeEventListener('beforeinstallprompt', h)
@@ -52,7 +58,41 @@ export default function AppLayout() {
         {ALL.filter((n) => MOBILE.includes(n.to)).map(({ to, label, icon: I }) => (
           <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${isActive ? 'font-semibold text-maroon' : 'text-charcoal/70'}`}><I size={20} />{label}</NavLink>
         ))}
+        <button onClick={() => setMoreOpen(true)} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${moreActive ? 'font-semibold text-maroon' : 'text-charcoal/70'}`}>
+          <Menu size={20} />Menu
+        </button>
       </nav>
+
+      {moreOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-cream-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="font-bold">Menu</span>
+              <button onClick={() => setMoreOpen(false)} aria-label="Tutup menu"><X size={20} /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {MORE.map(({ to, label, icon: I }) => (
+                <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium ${isActive ? 'border-maroon bg-white text-maroon' : 'border-softgray bg-white/60'}`}>
+                  <I size={22} />{label}
+                </NavLink>
+              ))}
+            </div>
+            {hasSupabase && (
+              <div className="mt-4 border-t border-softgray pt-3">
+                {user ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-xs text-charcoal/60">{user.email}</p>
+                    <button onClick={() => { setMoreOpen(false); signOut() }} className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-maroon"><LogOut size={16} />Keluar</button>
+                  </div>
+                ) : (
+                  <NavLink to="/login" className="flex items-center gap-2 text-sm font-semibold text-maroon"><LogIn size={16} />Masuk</NavLink>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
