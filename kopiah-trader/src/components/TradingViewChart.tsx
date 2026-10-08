@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { tradingViewSymbol } from '../lib/config'
 
+/**
+ * Chart resmi TradingView (gratis, tanpa API key).
+ * Tombol "Layar Penuh" selalu tampil:
+ *  - Semua browser: chart menutupi seluruh layar (overlay CSS).
+ *  - Android Chrome: ditambah fullscreen asli + kunci orientasi ke lanskap otomatis.
+ */
 export default function TradingViewChart({ symbolId }: { symbolId: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -10,7 +16,7 @@ export default function TradingViewChart({ symbolId }: { symbolId: string }) {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    el.innerHTML = ''
+    el.innerHTML = '' // bersihkan widget lama saat ganti simbol
 
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
@@ -24,7 +30,7 @@ export default function TradingViewChart({ symbolId }: { symbolId: string }) {
       theme: 'light',
       style: '1',
       locale: 'id',
-      allow_symbol_change: false,
+      allow_symbol_change: true,
       hide_side_toolbar: false,
       withdateranges: true,
       support_host: 'https://www.tradingview.com'
@@ -32,11 +38,13 @@ export default function TradingViewChart({ symbolId }: { symbolId: string }) {
     el.appendChild(script)
   }, [symbolId])
 
+  // Kunci scroll halaman saat chart membesar.
   useEffect(() => {
     document.body.style.overflow = expanded ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [expanded])
 
+  // Kalau user keluar fullscreen lewat gestur/tombol back HP, ikut tutup overlay.
   useEffect(() => {
     const onChange = () => {
       if (!document.fullscreenElement) {

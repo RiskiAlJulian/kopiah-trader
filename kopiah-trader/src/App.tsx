@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
+import SplashScreen from './components/SplashScreen'
 import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import HomePage from './pages/HomePage'
@@ -18,7 +20,10 @@ import LoginPage from './pages/LoginPage'
 import ComingSoon from './pages/ComingSoon'
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true)
   return (
+    <>
+    {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
@@ -38,5 +43,6 @@ export default function App() {
         <Route path="*" element={<ComingSoon title="Halaman tidak ditemukan" />} />
       </Route>
     </Routes>
+    </>
   )
 }
