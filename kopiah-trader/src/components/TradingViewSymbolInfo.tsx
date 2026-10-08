@@ -10,15 +10,15 @@ export default function TradingViewSymbolInfo({ symbolId }: { symbolId: string }
     el.innerHTML = ''
 
     const script = document.createElement('script')
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js'
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js'
     script.type = 'text/javascript'
     script.async = true
     script.innerHTML = JSON.stringify({
       symbol: tradingViewSymbol(symbolId),
       width: '100%',
-      locale: 'id',
       colorTheme: 'light',
-      isTransparent: false
+      isTransparent: false,
+      locale: 'id'
     })
     el.appendChild(script)
   }, [symbolId])

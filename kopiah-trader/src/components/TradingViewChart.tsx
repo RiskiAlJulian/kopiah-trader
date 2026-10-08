@@ -1,8 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { tradingViewSymbol } from '../lib/config'
 
 export default function TradingViewChart({ symbolId }: { symbolId: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -29,10 +32,54 @@ export default function TradingViewChart({ symbolId }: { symbolId: string }) {
     el.appendChild(script)
   }, [symbolId])
 
+  useEffect(() => {
+    document.body.style.overflow = expanded ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [expanded])
+
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) {
+        setExpanded(false)
+        try { (screen.orientation as any)?.unlock?.() } catch { /* tidak didukung */ }
+      }
+    }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const open = async () => {
+    setExpanded(true)
+    try {
+      await (wrapperRef.current as any)?.requestFullscreen?.()
+      await (screen.orientation as any)?.lock?.('landscape')
+    } catch {
+      // Browser tidak mendukung (mis. iPhone): overlay CSS tetap jalan, putar HP manual ke lanskap.
+    }
+  }
+
+  const close = async () => {
+    setExpanded(false)
+    try { (screen.orientation as any)?.unlock?.() } catch { /* tidak didukung */ }
+    try { if (document.fullscreenElement) await document.exitFullscreen() } catch { /* abaikan */ }
+  }
+
   return (
-    <div className="rounded-2xl border border-softgray bg-cream-card p-2">
-      <div className="h-[420px] w-full md:h-[560px]" ref={containerRef} />
-      <p className="mt-1 px-1 text-[11px] text-charcoal/50">Chart resmi dari TradingView — harga di sini selalu sama dengan tradingview.com.</p>
+    <div
+      ref={wrapperRef}
+      className={expanded ? 'fixed inset-0 z-50 flex flex-col bg-white p-2' : 'rounded-2xl border border-softgray bg-cream-card p-2'}
+    >
+      <div className="mb-1 flex items-center justify-between gap-2 px-1">
+        {!expanded && <p className="text-[11px] text-charcoal/50">Chart resmi dari TradingView.</p>}
+        <button
+          onClick={expanded ? close : open}
+          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-maroon px-3 py-1.5 text-xs font-semibold text-white hover:bg-maroon-dark"
+        >
+          {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          {expanded ? 'Tutup' : 'Layar Penuh / Lanskap'}
+        </button>
+      </div>
+      <div className={expanded ? 'min-h-0 w-full flex-1' : 'h-[420px] w-full md:h-[560px]'} ref={containerRef} />
     </div>
   )
-} 
+}
