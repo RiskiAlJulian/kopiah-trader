@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { materialsByLevel } from '../data/academy'
 import { useAcademyProgress } from '../hooks/useAcademyProgress'
+import VideoSection from '../components/academy/VideoSection'
 
 function Section({ title, level }: { title: string; level: 'BEGINNER' | 'TECHNICAL' }) {
   const { progress, isLoading, isError, refetch } = useAcademyProgress()
@@ -58,6 +59,7 @@ export default function AcademyPage() {
         <h1 className="text-2xl font-bold">KOPIAH TRADER ACADEMY</h1>
         <p className="text-charcoal/70">Materi belajar trading, dari dasar hingga konsep teknikal. Progress tersimpan di akunmu dan tersinkron di semua perangkat.</p>
       </div>
+      <VideoSection />
       <Section title="Beginner" level="BEGINNER" />
       <Section title="Technical" level="TECHNICAL" />
     </div>

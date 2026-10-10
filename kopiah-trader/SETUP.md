@@ -1,69 +1,61 @@
-# KOPIAH TRADER — Checklist Setup
+# KOPIAH TRADER — Panduan Setup & Update
 
-Centang manual (ganti `[ ]` jadi `[x]`) sambil jalan.
+## 1. Cara memperbarui project (cukup sekali jalan)
 
-## 1. Isi file `.env`
+Setiap ada pembaruan, kamu menerima **satu zip lengkap** bernama `kopiah-trader-lengkap.zip`.
 
-- [ ] Copy `.env.example` jadi `.env` (di root project, sejajar dengan `package.json`)
-- [ ] Nanti isi 4 baris di file ini setelah dapat key dari langkah 2–4 di bawah:
-  ```
-  VITE_TWELVE_DATA_API_KEY=
-  VITE_FMP_API_KEY=
-  VITE_SUPABASE_URL=
-  VITE_SUPABASE_ANON_KEY=
-  ```
+1. Ekstrak zip. Hasilnya langsung berisi `package.json`, `src`, `api`, `public`, dst. (tidak ada folder tambahan).
+2. Buka folder project kamu yang berisi `package.json`.
+3. Di folder hasil ekstrak: **Ctrl+A** lalu **Ctrl+C**. Di folder project: **Ctrl+V**, pilih **Replace the files in the destination**.
+4. Di terminal VS Code (dari folder project):
+   ```
+   git add .
+   git commit -m "Update"
+   git push
+   ```
+5. Tunggu deployment Vercel berstatus **Ready**, lalu buka lewat tab Incognito.
 
-## 2. Twelve Data (harga XAUUSD & chart candlestick)
+Cek cepat sebelum commit: `git status` hanya boleh menampilkan file yang memang berubah.
+Kalau muncul folder `src/src` atau `index.html` di dalam `src`, berarti paste-nya salah tempat.
 
-- [ ] Daftar gratis di https://twelvedata.com
-- [ ] Buka dashboard → copy API key
-- [ ] Tempel ke `VITE_TWELVE_DATA_API_KEY` di `.env`
+## 2. File isi konten (ikut di zip)
 
-## 3. Financial Modeling Prep (Economic Calendar / News)
+| File | Isinya |
+|---|---|
+| `src/data/live.ts` | Link TikTok/YouTube/Instagram dan jadwal live |
+| `src/data/videos.ts` | Daftar video edukasi (kosong = bagian Video tersembunyi) |
 
-- [ ] Daftar gratis di https://financialmodelingprep.com
-- [ ] Buka dashboard → copy API key
-- [ ] Tempel ke `VITE_FMP_API_KEY` di `.env`
+Dua file ini ikut di zip dengan isi terakhir yang saya ketahui. **Kalau kamu mengubahnya sendiri**, kirim isi barunya ke saya
+supaya ikut di zip berikutnya. Kalau tidak, update berikutnya akan menimpanya dengan isi lama.
 
-## 4. Supabase (Login, Academy, Journal, Community)
+`.env` (kunci API) **tidak** ikut di zip karena rahasia. Buat sendiri dari `.env.example`.
 
-- [ ] Buat project baru di https://supabase.com (kalau belum ada)
-- [ ] Buka **Project Settings → API**
-  - [ ] Copy **Project URL** → tempel ke `VITE_SUPABASE_URL`
-  - [ ] Copy **anon public key** → tempel ke `VITE_SUPABASE_ANON_KEY`
-- [ ] Buka **SQL Editor → New query**
-  - [ ] Paste seluruh isi file `supabase/schema.sql` dari project ini
-  - [ ] Klik **Run** (aman dijalankan ulang kalau perlu)
-- [ ] Buka **Authentication → Providers** → pastikan **Email** aktif
-- [ ] (Opsional, buat testing cepat) **Authentication → Settings** → matikan **Confirm email** supaya tidak perlu verifikasi email dulu
-- [ ] Buka **Storage** → pastikan bucket `journal-screenshots` sudah muncul otomatis (dibuat oleh schema.sql)
+## 3. Environment variables
 
-## 5. Jadwal Live Trade (opsional)
+**Komputer (file `.env`)**: `VITE_TWELVE_DATA_API_KEY`, `VITE_FMP_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 
-- [ ] Buka `src/data/live.ts`
-- [ ] Isi `LIVE_URL` dengan link TikTok/YouTube live kamu
-- [ ] Ganti `'Jadwal belum diatur'` di `LIVE_SCHEDULE` dengan jam asli tiap hari
+**Vercel (Settings → Environment Variables)**: keempat di atas, ditambah:
 
-## 6. Jalankan aplikasi
+| Name | Fungsi |
+|---|---|
+| `GEMINI_API_KEY` | Menyalakan AI umum (tanpa awalan `VITE_`). Key dari aistudio.google.com/apikey |
+| `GEMINI_MODEL` | Opsional. Default `gemini-2.5-flash` |
 
-- [ ] Di terminal VS Code: `npm install`
-- [ ] Lalu: `npm run dev`
-- [ ] Buka link yang muncul di browser (biasanya `http://localhost:5173`)
+Setelah menambah/mengubah environment variable, lakukan **Redeploy** (Deployments → titik tiga → Redeploy).
 
-## 7. Tes menyeluruh
+## 4. Setup sekali saja
 
-- [ ] Harga XAUUSD di Home tampil dengan lencana 🟢 REAL MARKET DATA (bukan 🟡 API belum dikonfigurasi)
-- [ ] Chart candlestick di halaman Market → XAUUSD bisa zoom/pan dan ganti timeframe
-- [ ] Daftar akun baru lewat halaman Login
-- [ ] Academy: buka satu materi, isi quiz, skor tersimpan (refresh halaman, skor masih ada)
-- [ ] Journal: tambah 1 trade lengkap dengan screenshot before/after, cek muncul di daftar
-- [ ] Community: buat 1 post, like, comment, bookmark
-- [ ] News: pilih preset Hari Ini/Minggu Ini, cek data event muncul
-- [ ] Profile: ubah username, cek Academy Progress & Win Rate muncul benar
-- [ ] Coba buka di HP dan laptop dengan akun yang sama → data (Journal, Academy, Community) harus sama di kedua perangkat
+- [ ] Supabase: SQL Editor → paste isi `supabase/schema.sql` → Run
+- [ ] Supabase: Authentication → Sign In / Providers → pastikan Email aktif
+- [ ] Vercel: Root Directory = folder yang berisi `package.json`
+- [ ] Vercel: semua environment variable di atas sudah diisi
 
-## Kalau ada yang gagal
+## 5. Kalau ada masalah
 
-- Cek tab **Network** di DevTools browser (F12) → lihat request mana yang merah/gagal
-- Cek pesan error di halaman (aplikasi ini sengaja menampilkan pesan jelas, bukan data palsu, kalau API/Supabase gagal)
-- Untuk error Supabase, cek juga **Logs** di dashboard Supabase project kamu
+| Gejala | Penyebab umum |
+|---|---|
+| 404 saat refresh halaman | `vercel.json` tidak berada sejajar `package.json` |
+| AI bilang "belum tersambung" | `GEMINI_API_KEY` belum ada, atau belum Redeploy |
+| AI bilang "sedang bermasalah" | Lihat Vercel → Logs, cari `chat error` |
+| Deploy Error | Buka deployment → Build Logs, baca baris merah paling atas |
+| News kosong | Cek `VITE_FMP_API_KEY` |
