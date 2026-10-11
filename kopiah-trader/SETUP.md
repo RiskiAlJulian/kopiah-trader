@@ -39,7 +39,7 @@ supaya ikut di zip berikutnya. Kalau tidak, update berikutnya akan menimpanya de
 | Name | Fungsi |
 |---|---|
 | `GEMINI_API_KEY` | Menyalakan AI umum (tanpa awalan `VITE_`). Key dari aistudio.google.com/apikey |
-| `GEMINI_MODEL` | Opsional. Default `gemini-2.5-flash` |
+| `GEMINI_MODEL` | Opsional. Kosong = otomatis mencoba `gemini-3.8-flash`, lalu model cadangan bila gagal/dipensiunkan |
 
 Setelah menambah/mengubah environment variable, lakukan **Redeploy** (Deployments → titik tiga → Redeploy).
 
@@ -56,6 +56,6 @@ Setelah menambah/mengubah environment variable, lakukan **Redeploy** (Deployment
 |---|---|
 | 404 saat refresh halaman | `vercel.json` tidak berada sejajar `package.json` |
 | AI bilang "belum tersambung" | `GEMINI_API_KEY` belum ada, atau belum Redeploy |
-| AI bilang "sedang bermasalah" | Lihat Vercel → Logs, cari `chat error` |
+| AI bilang "sedang bermasalah" | Lihat Vercel → Logs, cari `gemini ... gagal`. Pesan error Google menyebut penyebabnya (model dipensiunkan, kuota habis, dll) |
 | Deploy Error | Buka deployment → Build Logs, baca baris merah paling atas |
 | News kosong | Cek `VITE_FMP_API_KEY` |

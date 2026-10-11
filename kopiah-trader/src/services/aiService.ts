@@ -14,7 +14,7 @@ export interface AIAnswer {
 export interface AIProvider { ask(history: ChatMessage[]): Promise<AIAnswer> }
 
 class AIServerError extends Error {
-  constructor(public status: number, public code: string) { super(code) }
+  constructor(public status: number, public code: string, public detail?: string) { super(code) }
 }
 
 /** Memanggil fungsi server /api/chat (api/chat.js) yang memegang API key model AI. */
@@ -33,7 +33,7 @@ class ServerLLMProvider implements AIProvider {
       throw new AIServerError(0, 'network')
     }
     const body = await res.json().catch(() => null)
-    if (!res.ok) throw new AIServerError(res.status, body?.error ?? 'error')
+    if (!res.ok) throw new AIServerError(res.status, body?.error ?? 'error', typeof body?.detail === 'string' ? body.detail : undefined)
     if (!body || typeof body.answer !== 'string') throw new AIServerError(0, 'bad_response')
     return { answer: body.answer, source: 'llm' }
   }
@@ -92,9 +92,10 @@ export const aiService = {
       return await remote.ask(history)
     } catch (e) {
       if (e instanceof AIServerError) {
-        if (e.status === 429) return { answer: 'AI sedang mencapai batas penggunaan. Tunggu sebentar lalu coba lagi.', source: 'error' }
+        const notice = e.detail ? `Detail teknis: ${e.detail}` : undefined
+        if (e.status === 429) return { answer: 'AI sedang mencapai batas penggunaan. Tunggu sebentar lalu coba lagi.', source: 'error', notice }
         if (e.status === 401) return { answer: 'Sesi login kamu sudah habis. Silakan keluar lalu masuk lagi.', source: 'error' }
-        if (e.status === 502) return { answer: 'AI sedang bermasalah. Coba lagi sebentar lagi.', source: 'error' }
+        if (e.status === 502) return { answer: 'AI sedang bermasalah. Coba lagi sebentar lagi.', source: 'error', notice }
       }
       // Belum dikonfigurasi (503), halaman /api tidak ada (mis. saat npm run dev), atau tidak ada jaringan.
       const fallback = await local.ask(history)
