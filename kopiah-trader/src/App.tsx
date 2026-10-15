@@ -11,6 +11,7 @@ import LivePage from './pages/LivePage'
 import NewsPage from './pages/NewsPage'
 import AcademyPage from './pages/AcademyPage'
 import AcademyDetailPage from './pages/AcademyDetailPage'
+import LevelQuizPage from './pages/LevelQuizPage'
 import JournalPage from './pages/JournalPage'
 import AIPage from './pages/AIPage'
 import CommunityPage from './pages/CommunityPage'
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/calculator" element={<CalculatorPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/academy" element={<ProtectedRoute><AcademyPage /></ProtectedRoute>} />
+        <Route path="/academy/level/:level" element={<ProtectedRoute><LevelQuizPage /></ProtectedRoute>} />
         <Route path="/academy/:id" element={<ProtectedRoute><AcademyDetailPage /></ProtectedRoute>} />
         <Route path="/journal" element={<ProtectedRoute><JournalPage /></ProtectedRoute>} />
         <Route path="/ai" element={<ProtectedRoute><AIPage /></ProtectedRoute>} />

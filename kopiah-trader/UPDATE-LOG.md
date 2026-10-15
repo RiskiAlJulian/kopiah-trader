@@ -1,5 +1,11 @@
 # Catatan Versi
 
+## 2026-10-13
+- Academy: 120 soal bertingkat (8 per materi: 2 soal tiap tingkat Pemula, Menengah, Mahir, Profesional & Analis), lengkap dengan penjelasan jawaban
+- Academy: Tantangan Level (10 soal acak per tingkat, lulus 70% untuk membuka level berikutnya) dan gelar (Calon Trader sampai Analis Profesional)
+- Profile: gelar mengikuti level yang lulus; "Materi lulus" dihitung dari kuis baru
+- Hasil kuis lama (1 soal) tidak lagi dihitung; tidak perlu perubahan database
+
 ## 2026-10-11
 - AI: model default diganti ke `gemini-3.8-flash` (2.5-flash dipensiunkan Google untuk pengguna baru)
 - AI: bila satu model gagal/kena batas, otomatis mencoba model cadangan (3.8 → 3.7 → 3.5-flash-lite → 3.1-flash-lite); tanpa parameter temperature

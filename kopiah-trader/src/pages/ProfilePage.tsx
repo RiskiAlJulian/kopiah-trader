@@ -7,6 +7,7 @@ import { useJournal } from '../hooks/useJournal'
 import { useAcademyProgress } from '../hooks/useAcademyProgress'
 import { usePosts } from '../hooks/useCommunity'
 import { MATERIALS } from '../data/academy'
+import { isPassed, rankOf } from '../lib/quiz'
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
@@ -19,7 +20,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false)
   const [username, setUsername] = useState('')
 
-  const doneCount = Object.values(progress).filter((p) => p.done).length
+  const doneCount = MATERIALS.filter((m) => isPassed(progress[m.id])).length
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -39,13 +40,13 @@ export default function ProfilePage() {
             <button onClick={() => { setUsername(profile?.username ?? ''); setEditing(true) }} className="font-bold hover:underline">{profile?.username ?? user?.email}</button>
           )}
           <p className="truncate text-xs text-charcoal/60">{user?.email}</p>
-          <span className="mt-1 inline-block rounded-full bg-softgray/60 px-2 py-0.5 text-[11px] font-semibold">{profile?.traderLevel ?? 'Pemula'}</span>
+          <span className="mt-1 inline-block rounded-full bg-softgray/60 px-2 py-0.5 text-[11px] font-semibold">{academyLoading ? '…' : rankOf(progress)}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-softgray bg-cream-card p-4">
-          <div className="text-xs text-charcoal/50">Academy Progress</div>
+          <div className="text-xs text-charcoal/50">Materi lulus</div>
           <div className="mt-1 text-xl font-bold">{academyLoading ? '…' : `${doneCount}/${MATERIALS.length}`}</div>
         </div>
         <div className="rounded-2xl border border-softgray bg-cream-card p-4">
