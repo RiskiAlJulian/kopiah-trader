@@ -32,12 +32,15 @@ supaya ikut di zip berikutnya. Kalau tidak, update berikutnya akan menimpanya de
 
 ## 3. Environment variables
 
-**Komputer (file `.env`)**: `VITE_TWELVE_DATA_API_KEY`, `VITE_FMP_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+**Komputer (file `.env`)**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `TWELVE_DATA_API_KEY`, `FMP_API_KEY`
 
-**Vercel (Settings → Environment Variables)**: keempat di atas, ditambah:
+**Vercel (Settings → Environment Variables)**: keempat di atas, ditambah di tabel ini. Key rahasia **tanpa** awalan `VITE_`
+supaya tidak ikut ke browser. Variabel lama `VITE_TWELVE_DATA_API_KEY` dan `VITE_FMP_API_KEY` **hapus** dari Vercel dan `.env`.
 
 | Name | Fungsi |
 |---|---|
+| `TWELVE_DATA_API_KEY` | Data panel Analysis (lewat `api/market.js`) |
+| `FMP_API_KEY` | Economic Calendar (lewat `api/calendar.js`) |
 | `GEMINI_API_KEY` | Menyalakan AI umum (tanpa awalan `VITE_`). Key dari aistudio.google.com/apikey |
 | `GEMINI_MODEL` | Opsional. Kosong = otomatis mencoba `gemini-3.8-flash`, lalu model cadangan bila gagal/dipensiunkan |
 
@@ -58,4 +61,9 @@ Setelah menambah/mengubah environment variable, lakukan **Redeploy** (Deployment
 | AI bilang "belum tersambung" | `GEMINI_API_KEY` belum ada, atau belum Redeploy |
 | AI bilang "sedang bermasalah" | Lihat Vercel → Logs, cari `gemini ... gagal`. Pesan error Google menyebut penyebabnya (model dipensiunkan, kuota habis, dll) |
 | Deploy Error | Buka deployment → Build Logs, baca baris merah paling atas |
-| News kosong | Cek `VITE_FMP_API_KEY` |
+| News kosong | Cek `FMP_API_KEY` di Vercel (tanpa VITE_) lalu Redeploy |
+
+## Lupa password (Supabase)
+Di Supabase: Authentication > URL Configuration, isi **Site URL** dengan alamat situs kamu
+dan tambahkan `https://DOMAIN-KAMU/reset-password` (serta `http://localhost:5173/reset-password`
+untuk tes lokal) ke **Redirect URLs**. Tanpa ini, tautan di email tidak akan mengarah ke halaman reset.

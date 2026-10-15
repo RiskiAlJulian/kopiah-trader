@@ -2,9 +2,9 @@ import type { EconomicEvent, Impact } from '../types/news'
 import type { NewsProvider } from './NewsProvider'
 import { MissingKeyError, ProviderError, RateLimitError } from './errors'
 
-// FMP memindahkan endpoint lama (/api/v3/economic_calendar, sudah deprecated oleh FMP)
-// ke endpoint "stable" ini. Kalau FMP mengganti lagi di masa depan, cukup ubah baris ini.
-const BASE = 'https://financialmodelingprep.com/stable/economic-calendar'
+// Panggilan lewat fungsi server /api/calendar (api/calendar.js); API key ada di server.
+// Alamat FMP sendiri diatur di api/calendar.js.
+const BASE = '/api/calendar'
 
 const normalizeImpact = (raw: unknown): Impact => {
   const s = String(raw ?? '').toLowerCase()
@@ -18,14 +18,12 @@ const num = (v: unknown): number | null => {
 }
 
 export class FMPProvider implements NewsProvider {
-  constructor(private apiKey?: string) {}
-
   async getCalendar(fromISODate: string, toISODate: string): Promise<EconomicEvent[]> {
-    if (!this.apiKey) throw new MissingKeyError()
     let res: Response
     try {
-      res = await fetch(`${BASE}?${new URLSearchParams({ from: fromISODate, to: toISODate, apikey: this.apiKey })}`)
+      res = await fetch(`${BASE}?${new URLSearchParams({ from: fromISODate, to: toISODate })}`)
     } catch { throw new ProviderError('network') }
+    if (res.status === 503) throw new MissingKeyError()
     if (res.status === 429) throw new RateLimitError()
     if (res.status === 401 || res.status === 403) throw new ProviderError('API key tidak valid atau endpoint ini butuh plan berbayar di FMP.')
     const data = await res.json().catch(() => null)

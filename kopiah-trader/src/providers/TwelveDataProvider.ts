@@ -2,19 +2,18 @@ import type { Candle, Interval, Quote } from '../types/market'
 import type { MarketDataProvider } from './MarketDataProvider'
 import { MissingKeyError, ProviderError, RateLimitError } from './errors'
 
-const BASE = 'https://api.twelvedata.com'
+// Panggilan lewat fungsi server /api/market (api/market.js); API key ada di server, bukan di browser.
+const BASE = '/api/market'
 const IV: Record<Interval, string> = { '1M': '1min', '5M': '5min', '15M': '15min', '30M': '30min', '1H': '1h', '4H': '4h', '1D': '1day' }
 const num = (v: unknown) => parseFloat(String(v))
 
 export class TwelveDataProvider implements MarketDataProvider {
-  constructor(private apiKey?: string) {}
-
   private async request(path: string, params: Record<string, string>) {
-    if (!this.apiKey) throw new MissingKeyError()
     let res: Response
     try {
-      res = await fetch(`${BASE}/${path}?${new URLSearchParams({ ...params, apikey: this.apiKey })}`)
+      res = await fetch(`${BASE}?${new URLSearchParams({ path, ...params })}`)
     } catch { throw new ProviderError('network') }
+    if (res.status === 503) throw new MissingKeyError()
     if (res.status === 429) throw new RateLimitError()
     const data = await res.json().catch(() => null)
     // Twelve Data sering mengirim error dengan HTTP 200 + body {status:"error", code}

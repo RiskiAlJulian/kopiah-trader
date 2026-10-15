@@ -8,8 +8,10 @@ export const MARKET_REFRESH_INTERVAL = 45_000
 // saat likuiditas rendah — 5 menit terlalu sensitif dan sering salah tandai data basi.
 export const STALE_AFTER_MS = 10 * 60_000
 export const DEFAULT_INTERVAL = '15M' as const
-export const HAS_KEY = Boolean(import.meta.env.VITE_TWELVE_DATA_API_KEY)
-export const HAS_NEWS_KEY = Boolean(import.meta.env.VITE_FMP_API_KEY)
+// API key kini ada di server (api/market.js, api/calendar.js), jadi browser tidak bisa mengeceknya.
+// Kalau key belum diisi di server, provider melempar MissingKeyError dan UI menampilkan status error.
+export const HAS_KEY = true
+export const HAS_NEWS_KEY = true
 // Calendar tidak berubah tiap detik; refresh lebih jarang dari harga.
 export const NEWS_REFRESH_INTERVAL = 5 * 60_000
 

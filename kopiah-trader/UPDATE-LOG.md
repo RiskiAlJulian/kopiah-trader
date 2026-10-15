@@ -1,5 +1,9 @@
 # Catatan Versi
 
+## 2026-10-16
+- Login: fitur Lupa password (tautan reset lewat email, halaman `/reset-password`)
+- Keamanan: key Twelve Data dan FMP dipindah ke fungsi server (`api/market.js`, `api/calendar.js`); tidak lagi ikut ke browser. Variabel baru: `TWELVE_DATA_API_KEY`, `FMP_API_KEY` (tanpa `VITE_`). Respons di-cache di CDN Vercel sehingga kuota lebih hemat
+
 ## 2026-10-13
 - Academy: 120 soal bertingkat (8 per materi: 2 soal tiap tingkat Pemula, Menengah, Mahir, Profesional & Analis), lengkap dengan penjelasan jawaban
 - Academy: Tantangan Level (10 soal acak per tingkat, lulus 70% untuk membuka level berikutnya) dan gelar (Calon Trader sampai Analis Profesional)

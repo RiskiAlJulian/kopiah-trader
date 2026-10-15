@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useEconomicCalendar } from '../hooks/useEconomicCalendar'
 import { HAS_NEWS_KEY } from '../lib/config'
-import { RateLimitError } from '../providers/errors'
+import { MissingKeyError, RateLimitError } from '../providers/errors'
 import type { Impact } from '../types/news'
 import { fmtWIB } from '../utils/format'
 
@@ -46,7 +46,7 @@ export default function NewsPage() {
       <p className="mt-1 text-sm text-charcoal/60">Jam mengikuti zona waktu provider (diasumsikan UTC), dikonversi ke WIB.</p>
 
       {!HAS_NEWS_KEY ? (
-        <p className="mt-4 rounded-2xl border border-softgray bg-cream-card p-5 text-charcoal/70">News data provider belum terhubung. Isi <code>VITE_FMP_API_KEY</code> di file .env untuk mengaktifkan Economic Calendar.</p>
+        <p className="mt-4 rounded-2xl border border-softgray bg-cream-card p-5 text-charcoal/70">News data provider belum terhubung. Isi <code>FMP_API_KEY</code> di server untuk mengaktifkan Economic Calendar.</p>
       ) : (
         <>
           <div className="my-4 flex flex-wrap gap-2">
@@ -67,7 +67,9 @@ export default function NewsPage() {
             <div className="rounded-2xl border border-softgray bg-cream-card p-5 text-sm">
               <p>{q.error instanceof RateLimitError
                 ? 'Market data sedang mencapai batas request. Data akan diperbarui kembali setelah limit tersedia.'
-                : 'News data sementara tidak tersedia.'}</p>
+                : q.error instanceof MissingKeyError
+                  ? 'Server belum diisi FMP_API_KEY. Isi di Vercel (atau file .env saat tes lokal), lalu redeploy.'
+                  : 'News data sementara tidak tersedia.'}</p>
               <button onClick={() => q.refetch()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-maroon px-4 py-2 font-semibold text-white"><RefreshCw size={14} /> COBA LAGI</button>
             </div>
           )}

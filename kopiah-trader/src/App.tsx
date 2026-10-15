@@ -18,6 +18,7 @@ import CommunityPage from './pages/CommunityPage'
 import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import ComingSoon from './pages/ComingSoon'
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/academy" element={<ProtectedRoute><AcademyPage /></ProtectedRoute>} />
         <Route path="/academy/level/:level" element={<ProtectedRoute><LevelQuizPage /></ProtectedRoute>} />
         <Route path="/academy/:id" element={<ProtectedRoute><AcademyDetailPage /></ProtectedRoute>} />
