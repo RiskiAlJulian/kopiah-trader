@@ -66,3 +66,19 @@ Setelah menambah/mengubah environment variable, lakukan **Redeploy** (Deployment
 Di Supabase: Authentication > URL Configuration, isi **Site URL** dengan alamat situs kamu
 dan tambahkan `https://DOMAIN-KAMU/reset-password` (serta `http://localhost:5173/reset-password`
 untuk tes lokal) ke **Redirect URLs**. Tanpa ini, tautan di email tidak akan mengarah ke halaman reset.
+
+
+## Sinyal otomatis dan Jurnal Analis (Fibonacci)
+1. **Database**: Supabase > SQL Editor > New query > tempel isi `supabase/analyst-signals.sql` > Run.
+2. **Vercel > Environment Variables** (Production), tanpa awalan `VITE_`:
+   - `SUPABASE_SERVICE_ROLE_KEY`: dari Supabase > Settings > API > `service_role` (RAHASIA, aktifkan Sensitive).
+   - `CRON_SECRET`: kata sandi acak panjang buatanmu sendiri.
+   Lalu **Redeploy**.
+3. **Penjadwal**: Vercel Hobby hanya mengizinkan cron 1x sehari, jadi pakai layanan luar seperti cron-job.org:
+   URL `https://DOMAIN-KAMU/api/analyst-run`, metode GET, tiap 5 menit, header
+   `Authorization: Bearer ISI_CRON_SECRET`.
+4. **Cek**: dari Git Bash, `curl -H "Authorization: Bearer ISI_CRON_SECRET" https://DOMAIN-KAMU/api/analyst-run`
+   harus menjawab `{"ok":true,...}`.
+
+Aturan strategi ada di bagian `CONFIG` dan komentar kepala file `api/_lib/fibSignals.js`.
+Kuota Twelve Data gratis 800 request/hari; penjadwal tiap 5 menit memakai sekitar 288 per hari.

@@ -2,6 +2,7 @@
 // dihitung dari data candle asli. Bersifat edukasi: hasilnya adalah pembacaan kondisi chart
 // dan contoh skenario, BUKAN sinyal trading.
 import type { Candle } from '../types/market'
+import { FIBO } from './fiboConfig'
 
 export type Dir = 'bull' | 'bear'
 export interface Swing { index: number; time: number; price: number; type: 'high' | 'low' }
@@ -26,6 +27,24 @@ export interface Plan {
   rr2: number
   warnings: string[]
 }
+export type FiboStatus = 'TUNGGU' | 'PANTAU' | 'SIAP' | 'SINYAL' | 'TELAT' | 'BATAL'
+export interface FiboLevel { key: string; label: string; ratio: number; price: number }
+export interface Fibo {
+  dir: Dir
+  status: FiboStatus
+  headline: string
+  leg: { origin: number; extreme: number; size: number; sizeAtr: number }
+  ret: number // posisi harga sekarang (0 = ekstrem, 1 = asal)
+  levels: FiboLevel[] // urut dari harga tertinggi ke terendah
+  entryZone: { low: number; high: number }
+  entry: number
+  stop: number
+  tp: number
+  rr: number
+  strength: 'kuat' | 'standar' | 'lemah' | null // hanya saat status SINYAL
+  reasons: { ok: boolean; text: string }[]
+  warnings: string[]
+}
 export interface ConfirmItem { label: string; ok: boolean; detail: string }
 export interface Analysis {
   price: number
@@ -40,6 +59,8 @@ export interface Analysis {
   confirmation: { dir: Dir | null; items: ConfirmItem[]; score: number }
   plan: Plan | null
   planReason: string | null
+  fibo: Fibo | null
+  fiboReason: string | null
 }
 
 export const MIN_CANDLES = 60
@@ -148,6 +169,96 @@ export function isRejection(k: Candle, dir: Dir): boolean {
   }
   const upper = k.high - Math.max(k.open, k.close)
   return upper >= 2 * b && upper >= 0.5 * r && (k.high - k.close) / r >= 0.6
+}
+
+function findLeg(closed: Candle[], swings: Swing[], dir: Dir, a: number): { origin: number; extreme: number } | null {
+  const origins = swings.filter((x) => x.type === (dir === 'bull' ? 'low' : 'high')).slice(-6).reverse()
+  for (const o of origins) {
+    const after = closed.slice(o.index + 1)
+    if (after.length < 3) continue
+    // titik asal tidak boleh sudah ditembus oleh penutupan candle
+    if (dir === 'bull' ? after.some((k) => k.close < o.price) : after.some((k) => k.close > o.price)) continue
+    const extreme = dir === 'bull' ? Math.max(...after.map((k) => k.high)) : Math.min(...after.map((k) => k.low))
+    if (Math.abs(extreme - o.price) >= FIBO.minLegAtr * a) return { origin: o.price, extreme }
+  }
+  return null
+}
+
+function buildFibo(p: {
+  closed: Candle[]; swings: Swing[]; a: number; price: number; dir: Dir; structTrend: Dir | 'mixed'; biasDir: Dir | null; zones: Zone[]; fmt: (n: number) => string
+}): { fibo: Fibo | null; reason: string | null } {
+  const { closed, swings, a, price, dir, structTrend, biasDir, zones, fmt } = p
+  const leg = findLeg(closed, swings, dir, a)
+  if (!leg) return { fibo: null, reason: `Belum ada leg ${dir === 'bull' ? 'naik' : 'turun'} yang cukup besar (minimal ${FIBO.minLegAtr}x ATR) untuk ditarik Fibonacci.` }
+
+  const size = Math.abs(leg.extreme - leg.origin)
+  const at = (r: number) => (dir === 'bull' ? leg.extreme - r * size : leg.extreme + r * size)
+  const ret = dir === 'bull' ? (leg.extreme - price) / size : (price - leg.extreme) / size
+  const tolR = (FIBO.touchTolAtr * a) / size
+
+  let status: FiboStatus
+  if (ret > FIBO.cl) status = 'BATAL'
+  else if (ret > FIBO.entryHigh + tolR) status = 'TELAT'
+  else if (ret >= FIBO.entryLow - tolR) status = 'SINYAL'
+  else if (ret >= FIBO.prepare) status = 'SIAP'
+  else if (ret >= FIBO.discount) status = 'PANTAU'
+  else status = 'TUNGGU'
+
+  const levels: FiboLevel[] = [
+    { key: 'tp', label: 'TP MAX', ratio: FIBO.tpMax, price: at(FIBO.tpMax) },
+    { key: 'discount', label: dir === 'bull' ? 'DISCOUNT' : 'PREMIUM', ratio: FIBO.discount, price: at(FIBO.discount) },
+    { key: 'prepare', label: 'PREPARE', ratio: FIBO.prepare, price: at(FIBO.prepare) },
+    { key: 'entry', label: 'ENTRY', ratio: FIBO.entryMid, price: at(FIBO.entryMid) },
+    { key: 'fm', label: 'FM', ratio: FIBO.fm, price: at(FIBO.fm) },
+    { key: 'cl', label: 'CL', ratio: FIBO.cl, price: at(FIBO.cl) }
+  ].sort((x, y) => y.price - x.price)
+
+  const zoneA = at(FIBO.entryLow), zoneB = at(FIBO.entryHigh)
+  const entryZone = { low: Math.min(zoneA, zoneB), high: Math.max(zoneA, zoneB) }
+  const entry = at(FIBO.entryMid), stop = at(FIBO.cl), tp = at(FIBO.tpMax)
+  const rr = Math.abs(tp - entry) / Math.abs(entry - stop)
+
+  // Konfluensi tambahan
+  const overlap = zones.find((z) => z.dir === dir && z.high >= entryZone.low - 0.25 * a && z.low <= entryZone.high + 0.25 * a)
+  const prev = closed[closed.length - 2], cur = closed[closed.length - 1]
+  const candleOk = isEngulfing(prev, cur, dir) || isRejection(cur, dir) || isRejection(prev, dir)
+  const biasOk = biasDir === dir
+  const confluence = [biasOk, !!overlap, candleOk].filter(Boolean).length
+  const word = dir === 'bull' ? 'buy' : 'sell'
+
+  const reasons: Fibo['reasons'] = [
+    { ok: structTrend === dir, text: structTrend === dir ? `Struktur ${dir === 'bull' ? 'Higher High dan Higher Low' : 'Lower High dan Lower Low'}: arah ${word} sesuai tren.` : `Arah ${word} mengikuti bias; struktur swing belum jelas.` },
+    { ok: true, text: `Leg ${dir === 'bull' ? 'naik' : 'turun'}: ${fmt(leg.origin)} → ${fmt(leg.extreme)} (${fmt(size)} poin, ${(size / a).toFixed(1)}x ATR).` },
+    { ok: status === 'SINYAL', text: `Harga retrace ${(ret * 100).toFixed(1)}% dari leg. Zona ENTRY ${(FIBO.entryLow * 100).toFixed(0)}–${(FIBO.entryHigh * 100).toFixed(0)}% = ${fmt(entryZone.low)} – ${fmt(entryZone.high)}.` },
+    { ok: ret >= FIBO.discount, text: ret >= FIBO.discount ? `Harga sudah melewati 50% leg (area ${dir === 'bull' ? 'discount' : 'premium'}), baik untuk ${word}.` : `Harga belum melewati 50% leg (belum ${dir === 'bull' ? 'discount' : 'premium'}).` },
+    { ok: biasOk, text: biasOk ? `Bias SMA (${dir === 'bull' ? 'Bullish' : 'Bearish'}) searah dengan entry.` : 'Bias SMA belum searah (wajar saat pullback dalam), jadi butuh kehati-hatian.' },
+    { ok: !!overlap, text: overlap ? `Zona entry berimpit dengan ${overlap.label} (${fmt(overlap.low)} – ${fmt(overlap.high)}).` : 'Tidak ada support/resistance atau FVG yang berimpit dengan zona entry.' },
+    { ok: candleOk, text: candleOk ? 'Ada candle konfirmasi (engulfing atau rejection) searah.' : 'Belum ada candle konfirmasi (engulfing/rejection) searah.' },
+    { ok: true, text: `Stop di CL 1.0 = ${fmt(stop)}, target TP MAX 0 = ${fmt(tp)}, Reward:Risk 1:${rr.toFixed(1)} dari titik entry ${fmt(entry)}.` }
+  ]
+
+  const headline: Record<FiboStatus, string> = {
+    TUNGGU: `Belum pullback. Tunggu harga retrace sampai area ${dir === 'bull' ? 'discount' : 'premium'} (≥ 50% leg).`,
+    PANTAU: `Harga di area ${dir === 'bull' ? 'discount' : 'premium'}, belum waktunya entry. Pantau terus.`,
+    SIAP: 'Siap-siap: harga mendekati zona ENTRY. Tunggu sentuhan zona.',
+    SINYAL: `Harga berada di zona ENTRY fibo. Sinyal ${word.toUpperCase()} aktif, cek alasan di bawah.`,
+    TELAT: 'Zona ENTRY sudah terlewat. Jangan mengejar harga; tunggu setup baru.',
+    BATAL: 'Harga menembus CL (1.0). Setup fibo ini batal.'
+  }
+  const warnings: string[] = []
+  if (Math.abs(entry - stop) > 3 * a) warnings.push('Stop loss (CL) lebih dari 3x ATR dari entry. Risiko per lot besar, kecilkan lot.')
+  if (status === 'SINYAL' && confluence === 0) warnings.push('Tidak ada konfluensi tambahan. Pertimbangkan menunggu konfirmasi.')
+  if (status === 'SINYAL' && !biasOk) warnings.push('Bias SMA belum searah; ini entry melawan arus jangka pendek.')
+
+  return {
+    fibo: {
+      dir, status, headline: headline[status], leg: { origin: leg.origin, extreme: leg.extreme, size, sizeAtr: size / a },
+      ret, levels, entryZone, entry, stop, tp, rr,
+      strength: status === 'SINYAL' ? (confluence >= 2 ? 'kuat' : confluence === 1 ? 'standar' : 'lemah') : null,
+      reasons, warnings
+    },
+    reason: null
+  }
 }
 
 /**
@@ -265,9 +376,17 @@ export function analyze(all: Candle[]): Analysis | null {
     }
   }
 
+  // --- Sinyal Fibonacci: arah dari struktur (HH/HL atau LH/LL); kalau belum jelas pakai bias ---
+  const fiboDir: Dir | null = structTrend !== 'mixed' ? structTrend : dir
+  const decimals = price >= 1000 ? 2 : price >= 20 ? 3 : price >= 1 ? 5 : 6
+  const fiboRes = fiboDir
+    ? buildFibo({ closed, swings, a, price, dir: fiboDir, structTrend, biasDir: dir, zones: [...supports, ...resistances, ...fvgs], fmt: (n) => n.toFixed(decimals) })
+    : { fibo: null, reason: 'Arah belum jelas (struktur dan bias belum searah), jadi Fibonacci belum ditarik.' }
+
   return {
     price, atr: a, lastTime: all[all.length - 1].time,
     bias, structure: { trend: structTrend, lastBreak }, range: rangeInfo,
-    supports, resistances, fvgs, confirmation, plan, planReason
+    supports, resistances, fvgs, confirmation, plan, planReason,
+    fibo: fiboRes.fibo, fiboReason: fiboRes.reason
   }
 }

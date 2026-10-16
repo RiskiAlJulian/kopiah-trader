@@ -19,6 +19,7 @@ import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import AnalystJournalPage from './pages/AnalystJournalPage'
 import ComingSoon from './pages/ComingSoon'
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/market/:symbol" element={<SymbolPage />} />
         <Route path="/live" element={<LivePage />} />
         <Route path="/news" element={<NewsPage />} />
+        <Route path="/analyst-journal" element={<AnalystJournalPage />} />
         <Route path="/calculator" element={<CalculatorPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

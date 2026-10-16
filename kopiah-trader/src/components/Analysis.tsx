@@ -1,4 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import SignalCard from './analyst/SignalCard'
+import { useAnalystSignals } from '../hooks/useAnalystSignals'
 import { useCandles } from '../hooks/useMarketData'
 import { analyze, MIN_CANDLES, type Analysis as Result, type Zone } from '../lib/analysis'
 import { calcLot, usdPerPriceUnitPerLot } from '../lib/risk'
@@ -39,6 +42,8 @@ export default function Analysis({ id }: { id: string }) {
           <button key={t} onClick={() => setTf(t)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tf === t ? 'bg-maroon text-white' : 'bg-softgray/50 hover:bg-softgray'}`}>{t}</button>
         ))}
       </div>
+
+      {id === 'XAUUSD' && <AutoSignals />}
 
       {q.isPending && <div className="mt-4 space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-xl bg-softgray/50" />)}</div>}
 
@@ -174,6 +179,21 @@ function RiskSection({ id, price, decimals, plan }: { id: string; price: number;
       ) : (
         <p className="text-[11px] text-charcoal/50">Hitung lot belum didukung untuk instrumen ini (spesifikasi kontrak berbeda-beda tiap broker). Risk amount tetap bisa dipakai sebagai acuan.</p>
       )}
+    </Section>
+  )
+}
+
+/** Sinyal otomatis Fibonacci (dibuat server, dicatat permanen di Jurnal Analis). Hanya untuk XAUUSD M15. */
+function AutoSignals() {
+  const q = useAnalystSignals(3, 'XAUUSD')
+  const list = q.data ?? []
+  return (
+    <Section title="Sinyal Otomatis (XAUUSD · M15 · Fibonacci)">
+      {q.isPending && <div className="h-16 animate-pulse rounded-xl bg-softgray/50" />}
+      {q.isError && <p className="text-xs text-charcoal/60">Sinyal belum bisa dimuat.</p>}
+      {q.isSuccess && list.length === 0 && <p className="text-xs text-charcoal/60">Belum ada sinyal. Sinyal muncul otomatis saat harga menyentuh Fib 0.705 dari leg swing terbaru.</p>}
+      {list.map((s) => <SignalCard key={s.id} s={s} compact />)}
+      <Link to="/analyst-journal" className="inline-block pt-1 text-xs font-semibold text-maroon">Lihat semua di Jurnal Analis →</Link>
     </Section>
   )
 }

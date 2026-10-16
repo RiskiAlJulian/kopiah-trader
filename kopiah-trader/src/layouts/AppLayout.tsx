@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { BarChart3, BookOpen, Bot, Calculator, Home, LogIn, LogOut, Newspaper, NotebookPen, Radio, User, Users, Download, Menu, X } from 'lucide-react'
+import { BarChart3, BookOpen, Bot, Calculator, Home, LogIn, LogOut, Newspaper, NotebookPen, Radio, ScrollText, User, Users, Download, Menu, X } from 'lucide-react'
 import Logo from '../components/Logo'
 import { useAuth } from '../contexts/AuthContext'
 
 const ALL = [
   { to: '/', label: 'Home', icon: Home }, { to: '/market', label: 'Market', icon: BarChart3 },
-  { to: '/live', label: 'Live Trade', icon: Radio }, { to: '/news', label: 'News', icon: Newspaper },
+  { to: '/live', label: 'Live Trade', icon: Radio }, { to: '/news', label: 'News', icon: Newspaper }, { to: '/analyst-journal', label: 'Jurnal Analis', icon: ScrollText },
   { to: '/academy', label: 'Academy', icon: BookOpen }, { to: '/journal', label: 'Journal', icon: NotebookPen },
   { to: '/calculator', label: 'Calculator', icon: Calculator }, { to: '/ai', label: 'AI', icon: Bot },
   { to: '/community', label: 'Community', icon: Users }, { to: '/profile', label: 'Profile', icon: User }
