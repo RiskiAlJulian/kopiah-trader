@@ -2,7 +2,8 @@ import { MATERIALS } from '../data/academy'
 import { supabase } from '../lib/supabaseClient'
 import type { Material } from '../types/academy'
 
-export interface ChatMessage { role: 'user' | 'assistant'; content: string }
+export interface ChatImage { mimeType: 'image/jpeg'; data: string }
+export interface ChatMessage { role: 'user' | 'assistant'; content: string; image?: ChatImage }
 export interface AIAnswer {
   answer: string
   relatedLessonId?: string
@@ -96,10 +97,14 @@ export const aiService = {
         const notice = e.detail ? `Detail teknis: ${e.detail}` : undefined
         if (e.code === 'timeout') return { answer: 'AI terlalu lama menjawab. Coba kirim lagi sebentar lagi.', source: 'error' }
         if (e.status === 429) return { answer: 'AI sedang mencapai batas penggunaan. Tunggu sebentar lalu coba lagi.', source: 'error', notice }
+        if (e.code === 'bad_image' || e.status === 413) return { answer: 'Gambar tidak valid atau terlalu besar. Coba gambar lain (JPG/PNG/WebP).', source: 'error' }
         if (e.status === 401) return { answer: 'Sesi login kamu sudah habis. Silakan keluar lalu masuk lagi.', source: 'error' }
         if (e.status === 502) return { answer: 'AI sedang bermasalah. Coba lagi sebentar lagi.', source: 'error', notice }
       }
       // Belum dikonfigurasi (503), halaman /api tidak ada (mis. saat npm run dev), atau tidak ada jaringan.
+      if (history[history.length - 1]?.image) {
+        return { answer: 'Analisis gambar butuh AI yang tersambung, dan saat ini belum tersedia. Coba lagi nanti atau kirim pertanyaan teks.', source: 'error' }
+      }
       const fallback = await local.ask(history)
       return { ...fallback, notice: 'AI umum belum tersambung, jawaban ini dari materi Academy.' }
     }

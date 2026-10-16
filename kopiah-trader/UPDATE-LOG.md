@@ -1,6 +1,7 @@
 # Catatan Versi
 
 ## 2026-10-16
+- AI: riwayat chat tersimpan di browser per akun (tidak hilang saat refresh; tombol "Chat baru" menghapusnya). Bisa melampirkan gambar chart (JPG/PNG/WebP, dikecilkan di perangkat, dikirim ke Gemini/Claude). Gambar tidak disimpan setelah refresh
 - News: sumber kalender diganti dari FMP (butuh plan berbayar, HTTP 402) ke feed gratis Forex Factory lewat `api/calendar.js`. Tidak perlu API key. Hanya minggu berjalan, ada forecast dan previous, tanpa nilai actual. Ditambah kolom cari berita (CPI, PPI, NFP)
 - Login: fitur Lupa password (tautan reset lewat email, halaman `/reset-password`)
 - Keamanan: key Twelve Data dipindah ke fungsi server (`api/market.js`, `api/calendar.js`); tidak lagi ikut ke browser. Variabel baru: `TWELVE_DATA_API_KEY`, `FMP_API_KEY` (tanpa `VITE_`). Respons di-cache di CDN Vercel sehingga kuota lebih hemat
