@@ -1,6 +1,7 @@
 # Catatan Versi
 
 ## 2026-10-16
+- Panel Analysis dilengkapi: pilihan timeframe (5M sampai 1D), Market Bias (SMA + struktur HH/HL), BOS/CHOCH, Premium/Discount, Area of Interest (support/resistance dari swing + Fair Value Gap), checklist Confirmation (engulfing/rejection/struktur), contoh Trading Plan (entry, SL, TP, RR) dan Risk Management (lot dari balance dan risk %). Logika ada di `src/lib/analysis.ts` dan `src/lib/risk.ts`. Edukasi, bukan sinyal
 - AI: riwayat chat tersimpan di browser per akun (tidak hilang saat refresh; tombol "Chat baru" menghapusnya). Bisa melampirkan gambar chart (JPG/PNG/WebP, dikecilkan di perangkat, dikirim ke Gemini/Claude). Gambar tidak disimpan setelah refresh
 - News: sumber kalender diganti dari FMP (butuh plan berbayar, HTTP 402) ke feed gratis Forex Factory lewat `api/calendar.js`. Tidak perlu API key. Hanya minggu berjalan, ada forecast dan previous, tanpa nilai actual. Ditambah kolom cari berita (CPI, PPI, NFP)
 - Login: fitur Lupa password (tautan reset lewat email, halaman `/reset-password`)
