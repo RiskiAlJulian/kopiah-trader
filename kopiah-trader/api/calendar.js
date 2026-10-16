@@ -1,44 +1,51 @@
-// Fungsi server Vercel: perantara ke FMP (Economic Calendar) supaya API key TIDAK ikut ke browser.
-// Isi di Vercel > Settings > Environment Variables (TANPA awalan VITE_):
-//   FMP_API_KEY
-// Kalau FMP mengganti alamat API lagi, cukup ubah BASE di bawah.
+// Fungsi server Vercel: perantara ke feed kalender ekonomi gratis (Forex Factory via Fair Economy).
+// Tidak butuh API key. Feed ini tidak resmi (tanpa jaminan layanan) dan hanya memuat MINGGU INI,
+// dengan kolom forecast dan previous, tanpa nilai actual.
+// Respons di-cache supaya feed tidak dipanggil terlalu sering (feed membatasi request).
 
-const BASE = 'https://financialmodelingprep.com/stable/economic-calendar'
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-const MAX_RANGE_DAYS = 62
-const TTL = 300 // detik cache CDN
+const FEED = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json'
+const TTL = 900 // detik cache CDN
+const WARM_MS = 5 * 60 * 1000 // cache di memori instance yang sama
+
+let cache = null // { at, data }
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ error: 'method_not_allowed' })
   }
-  // Bersihkan spasi/enter/tanda kutip yang sering ikut tertempel saat copy-paste key.
-  const key = (process.env.FMP_API_KEY || '').trim().replace(/^["']|["']$/g, '')
-  if (!key) return res.status(503).json({ error: 'not_configured' })
 
-  const from = String((req.query || {}).from || '')
-  const to = String((req.query || {}).to || '')
-  const span = (Date.parse(to) - Date.parse(from)) / 86_400_000
-  if (!DATE_RE.test(from) || !DATE_RE.test(to) || !(span >= 0 && span <= MAX_RANGE_DAYS)) {
-    return res.status(400).json({ error: 'bad_request' })
+  if (cache && Date.now() - cache.at < WARM_MS) {
+    res.setHeader('Cache-Control', `public, s-maxage=${TTL}, stale-while-revalidate=${TTL}`)
+    return res.status(200).json(cache.data)
   }
 
+  let status = 0
+  let detail = ''
   try {
-    const r = await fetch(`${BASE}?${new URLSearchParams({ from, to, apikey: key })}`, { signal: AbortSignal.timeout(10000) })
-    const raw = (await r.text()).split(key).join('***')
-    let data
-    try { data = JSON.parse(raw) } catch {
-      // Balasan bukan JSON (mis. teks penolakan plan). Teruskan status dan cuplikannya untuk diagnosis.
-      res.setHeader('Cache-Control', 'no-store')
-      return res.status(502).json({ error: 'upstream_error', upstream_status: r.status, detail: raw.slice(0, 200) })
+    const r = await fetch(FEED, {
+      signal: AbortSignal.timeout(10000),
+      headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; KopiahTrader/1.0)' }
+    })
+    status = r.status
+    const raw = await r.text()
+    let data = null
+    try { data = JSON.parse(raw) } catch { detail = raw.slice(0, 200) }
+    if (r.ok && Array.isArray(data)) {
+      cache = { at: Date.now(), data }
+      res.setHeader('Cache-Control', `public, s-maxage=${TTL}, stale-while-revalidate=${TTL}`)
+      return res.status(200).json(data)
     }
-    const ok = r.ok && Array.isArray(data)
-    res.setHeader('Cache-Control', ok ? `public, s-maxage=${TTL}, stale-while-revalidate=${TTL}` : 'no-store')
-    return res.status(r.status).json(data)
   } catch (e) {
-    console.error('calendar error:', e && (e.message || e))
-    const detail = String((e && (e.name + ': ' + e.message)) || e).split(key).join('***').slice(0, 200)
-    return res.status(502).json({ error: 'upstream_error', detail })
+    detail = String((e && (e.name + ': ' + e.message)) || e).slice(0, 200)
+    console.error('calendar error:', detail)
   }
+
+  // Gagal: pakai data terakhir yang tersimpan (walau sudah agak lama) daripada menampilkan kosong.
+  if (cache) {
+    res.setHeader('Cache-Control', 'public, s-maxage=60')
+    return res.status(200).json(cache.data)
+  }
+  res.setHeader('Cache-Control', 'no-store')
+  return res.status(502).json({ error: 'upstream_error', upstream_status: status || undefined, detail })
 }

@@ -6,7 +6,7 @@ export interface EconomicEvent {
   currency: string // mis. "USD"
   event: string
   impact: Impact
-  previous: number | null
-  forecast: number | null
-  actual: number | null
+  previous: string | null // teks apa adanya dari provider, mis. "0.2%" atau "3.95M"
+  forecast: string | null
+  actual: string | null
 }

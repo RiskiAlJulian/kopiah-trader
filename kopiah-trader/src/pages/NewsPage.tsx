@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useEconomicCalendar } from '../hooks/useEconomicCalendar'
 import { HAS_NEWS_KEY } from '../lib/config'
-import { MissingKeyError, ProviderError, RateLimitError } from '../providers/errors'
+import { ProviderError, RateLimitError } from '../providers/errors'
 import type { Impact } from '../types/news'
 import { fmtWIB } from '../utils/format'
 
 const IMPACT_STYLE: Record<Impact, string> = {
   HIGH: 'bg-red-50 text-maroon', MEDIUM: 'bg-orange-50 text-orange-800', LOW: 'bg-softgray/50 text-charcoal/70'
 }
-const toISO = (d: Date) => d.toISOString().slice(0, 10)
+// Tanggal lokal perangkat (bukan UTC), supaya "Hari Ini" sesuai hari WIB pengguna.
+const pad = (n: number) => String(n).padStart(2, '0')
+const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const PRESETS = ['Hari Ini', 'Minggu Ini'] as const
 
 function range(preset: (typeof PRESETS)[number]) {
@@ -24,6 +26,7 @@ export default function NewsPage() {
   const [preset, setPreset] = useState<(typeof PRESETS)[number]>('Hari Ini')
   const [currency, setCurrency] = useState('USD')
   const [impact, setImpact] = useState<'ALL' | Impact>('ALL')
+  const [search, setSearch] = useState('')
   const { from, to } = range(preset)
   const q = useEconomicCalendar(from, to)
 
@@ -32,8 +35,9 @@ export default function NewsPage() {
     return list
       .filter((e) => currency === 'ALL' || e.currency?.toUpperCase() === currency)
       .filter((e) => impact === 'ALL' || e.impact === impact)
+      .filter((e) => !search.trim() || e.event.toLowerCase().includes(search.trim().toLowerCase()))
       .sort((a, b) => a.timestamp - b.timestamp)
-  }, [q.data, currency, impact])
+  }, [q.data, currency, impact, search])
 
   const currencies = useMemo(() => {
     const set = new Set((q.data ?? []).map((e) => e.currency?.toUpperCase()).filter(Boolean))
@@ -43,10 +47,10 @@ export default function NewsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold">Economic Calendar</h1>
-      <p className="mt-1 text-sm text-charcoal/60">Jam mengikuti zona waktu provider (diasumsikan UTC), dikonversi ke WIB.</p>
+      <p className="mt-1 text-sm text-charcoal/60">Jam sudah dikonversi ke WIB. Data minggu berjalan dari Forex Factory (forecast dan previous; nilai actual tidak tersedia di sumber gratis).</p>
 
       {!HAS_NEWS_KEY ? (
-        <p className="mt-4 rounded-2xl border border-softgray bg-cream-card p-5 text-charcoal/70">News data provider belum terhubung. Isi <code>FMP_API_KEY</code> di server untuk mengaktifkan Economic Calendar.</p>
+        <p className="mt-4 rounded-2xl border border-softgray bg-cream-card p-5 text-charcoal/70">News data provider belum terhubung. Economic Calendar belum aktif.</p>
       ) : (
         <>
           <div className="my-4 flex flex-wrap gap-2">
@@ -59,6 +63,8 @@ export default function NewsPage() {
             <select value={impact} onChange={(e) => setImpact(e.target.value as 'ALL' | Impact)} className="rounded-full border border-softgray bg-white px-3 py-1.5 text-sm">
               <option value="ALL">Semua Impact</option><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option>
             </select>
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari berita (CPI, PPI, NFP…)"
+              className="min-w-[200px] flex-1 rounded-full border border-softgray bg-white px-3 py-1.5 text-sm" />
           </div>
 
           {q.isPending && <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded-xl bg-softgray/50" />)}</div>}
@@ -67,9 +73,7 @@ export default function NewsPage() {
             <div className="rounded-2xl border border-softgray bg-cream-card p-5 text-sm">
               <p>{q.error instanceof RateLimitError
                 ? 'Market data sedang mencapai batas request. Data akan diperbarui kembali setelah limit tersedia.'
-                : q.error instanceof MissingKeyError
-                  ? 'Server belum diisi FMP_API_KEY. Isi di Vercel (atau file .env saat tes lokal), lalu redeploy.'
-                  : 'News data sementara tidak tersedia.'}</p>
+                : 'News data sementara tidak tersedia.'}</p>
               {q.error instanceof ProviderError && <p className="mt-1 text-[11px] text-charcoal/50">Detail teknis: {q.error.message}</p>}
               <button onClick={() => q.refetch()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-maroon px-4 py-2 font-semibold text-white"><RefreshCw size={14} /> COBA LAGI</button>
             </div>

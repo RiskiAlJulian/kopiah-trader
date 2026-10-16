@@ -1,8 +1,9 @@
 # Catatan Versi
 
 ## 2026-10-16
+- News: sumber kalender diganti dari FMP (butuh plan berbayar, HTTP 402) ke feed gratis Forex Factory lewat `api/calendar.js`. Tidak perlu API key. Hanya minggu berjalan, ada forecast dan previous, tanpa nilai actual. Ditambah kolom cari berita (CPI, PPI, NFP)
 - Login: fitur Lupa password (tautan reset lewat email, halaman `/reset-password`)
-- Keamanan: key Twelve Data dan FMP dipindah ke fungsi server (`api/market.js`, `api/calendar.js`); tidak lagi ikut ke browser. Variabel baru: `TWELVE_DATA_API_KEY`, `FMP_API_KEY` (tanpa `VITE_`). Respons di-cache di CDN Vercel sehingga kuota lebih hemat
+- Keamanan: key Twelve Data dipindah ke fungsi server (`api/market.js`, `api/calendar.js`); tidak lagi ikut ke browser. Variabel baru: `TWELVE_DATA_API_KEY`, `FMP_API_KEY` (tanpa `VITE_`). Respons di-cache di CDN Vercel sehingga kuota lebih hemat
 
 ## 2026-10-13
 - Academy: 120 soal bertingkat (8 per materi: 2 soal tiap tingkat Pemula, Menengah, Mahir, Profesional & Analis), lengkap dengan penjelasan jawaban
