@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useEconomicCalendar } from '../hooks/useEconomicCalendar'
 import { HAS_NEWS_KEY } from '../lib/config'
-import { MissingKeyError, RateLimitError } from '../providers/errors'
+import { MissingKeyError, ProviderError, RateLimitError } from '../providers/errors'
 import type { Impact } from '../types/news'
 import { fmtWIB } from '../utils/format'
 
@@ -70,6 +70,7 @@ export default function NewsPage() {
                 : q.error instanceof MissingKeyError
                   ? 'Server belum diisi FMP_API_KEY. Isi di Vercel (atau file .env saat tes lokal), lalu redeploy.'
                   : 'News data sementara tidak tersedia.'}</p>
+              {q.error instanceof ProviderError && <p className="mt-1 text-[11px] text-charcoal/50">Detail teknis: {q.error.message}</p>}
               <button onClick={() => q.refetch()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-maroon px-4 py-2 font-semibold text-white"><RefreshCw size={14} /> COBA LAGI</button>
             </div>
           )}

@@ -15,7 +15,8 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ error: 'method_not_allowed' })
   }
-  const key = process.env.TWELVE_DATA_API_KEY
+  // Bersihkan spasi/enter/tanda kutip yang sering ikut tertempel saat copy-paste key.
+  const key = (process.env.TWELVE_DATA_API_KEY || '').trim().replace(/^["']|["']$/g, '')
   if (!key) return res.status(503).json({ error: 'not_configured' })
 
   const q = req.query || {}
@@ -39,12 +40,17 @@ export default async function handler(req, res) {
     const r = await fetch(`${BASE}/${path}?${params}`, { signal: AbortSignal.timeout(10000) })
     const raw = (await r.text()).split(key).join('***') // jaga-jaga key ikut tercetak di pesan error
     let data
-    try { data = JSON.parse(raw) } catch { return res.status(502).json({ error: 'upstream_error' }) }
+    try { data = JSON.parse(raw) } catch {
+      // Balasan bukan JSON (mis. teks penolakan plan). Teruskan status dan cuplikannya untuk diagnosis.
+      res.setHeader('Cache-Control', 'no-store')
+      return res.status(502).json({ error: 'upstream_error', upstream_status: r.status, detail: raw.slice(0, 200) })
+    }
     const ok = r.ok && data?.status !== 'error'
     res.setHeader('Cache-Control', ok ? `public, s-maxage=${TTL[path]}, stale-while-revalidate=${TTL[path] * 2}` : 'no-store')
     return res.status(r.status).json(data)
   } catch (e) {
     console.error('market error:', e && (e.message || e))
-    return res.status(502).json({ error: 'upstream_error' })
+    const detail = String((e && (e.name + ': ' + e.message)) || e).split(key).join('***').slice(0, 200)
+    return res.status(502).json({ error: 'upstream_error', detail })
   }
 }

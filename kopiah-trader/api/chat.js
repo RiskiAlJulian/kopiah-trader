@@ -68,6 +68,7 @@ async function callGemini(key, model, messages) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    signal: AbortSignal.timeout(20000), // jangan menunggu satu model lebih dari 20 detik
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
@@ -93,13 +94,15 @@ async function callGemini(key, model, messages) {
 
 async function askGemini(key, messages) {
   const failures = []
+  const startedAt = Date.now()
   for (const model of modelCandidates()) {
+    if (Date.now() - startedAt > 25000) break // total waktu dibatasi supaya pengguna tidak menunggu tanpa akhir
     try {
       const text = await callGemini(key, model, messages)
       lastGoodModel = model
       return text
     } catch (e) {
-      failures.push({ model, status: e && e.status, brief: e && e.brief })
+      failures.push({ model, status: e && e.status, brief: e && e.brief, timeout: e && e.name === 'TimeoutError' })
       console.error(`gemini ${model} gagal:`, e && (e.message || e)) // terlihat di Vercel > Logs
       if (e && e.status === 401) break // key salah: mencoba model lain percuma
     }
@@ -109,7 +112,7 @@ async function askGemini(key, messages) {
   const err = new Error('semua model gagal')
   err.status = limited ? 429 : failures[0]?.status
   err.detail =
-    failures.map((f) => `${f.model}=${f.status ?? 'jaringan'}`).join(', ') + (failures[0]?.brief ? ` | ${failures[0].brief}` : '')
+    failures.map((f) => `${f.model}=${f.status ?? (f.timeout ? 'timeout' : 'jaringan')}`).join(', ') + (failures[0]?.brief ? ` | ${failures[0].brief}` : '')
   throw err
 }
 
@@ -117,6 +120,7 @@ async function askAnthropic(key, messages) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    signal: AbortSignal.timeout(30000),
     body: JSON.stringify({
       model: process.env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
       max_tokens: 1500,

@@ -24,8 +24,14 @@ export class FMPProvider implements NewsProvider {
       res = await fetch(`${BASE}?${new URLSearchParams({ from: fromISODate, to: toISODate })}`)
     } catch { throw new ProviderError('network') }
     if (res.status === 503) throw new MissingKeyError()
+    if (res.status === 502) {
+      const b = await res.json().catch(() => null)
+      const up = b?.upstream_status
+      if (up === 401 || up === 402 || up === 403) throw new ProviderError(`FMP menolak (HTTP ${up}): key tidak valid atau endpoint ini butuh plan berbayar. ${b?.detail ?? ''}`.trim())
+      throw new ProviderError(`Gagal menghubungi FMP${up ? ` (HTTP ${up})` : ''}. ${b?.detail ?? ''}`.trim())
+    }
     if (res.status === 429) throw new RateLimitError()
-    if (res.status === 401 || res.status === 403) throw new ProviderError('API key tidak valid atau endpoint ini butuh plan berbayar di FMP.')
+    if (res.status === 401 || res.status === 402 || res.status === 403) throw new ProviderError(`FMP menolak (HTTP ${res.status}): API key tidak valid atau endpoint ini butuh plan berbayar.`)
     const data = await res.json().catch(() => null)
     // FMP mengembalikan error dalam beberapa bentuk berbeda tergantung endpoint/versi.
     if (data && typeof data === 'object' && !Array.isArray(data)) {

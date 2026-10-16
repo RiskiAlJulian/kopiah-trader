@@ -27,10 +27,11 @@ class ServerLLMProvider implements AIProvider {
       res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ messages: history.slice(-12) })
+        body: JSON.stringify({ messages: history.slice(-12) }),
+        signal: AbortSignal.timeout(60_000) // jangan biarkan layar "sedang mengetik" menggantung selamanya
       })
-    } catch {
-      throw new AIServerError(0, 'network')
+    } catch (e) {
+      throw new AIServerError(0, (e as Error)?.name === 'TimeoutError' ? 'timeout' : 'network')
     }
     const body = await res.json().catch(() => null)
     if (!res.ok) throw new AIServerError(res.status, body?.error ?? 'error', typeof body?.detail === 'string' ? body.detail : undefined)
@@ -93,6 +94,7 @@ export const aiService = {
     } catch (e) {
       if (e instanceof AIServerError) {
         const notice = e.detail ? `Detail teknis: ${e.detail}` : undefined
+        if (e.code === 'timeout') return { answer: 'AI terlalu lama menjawab. Coba kirim lagi sebentar lagi.', source: 'error' }
         if (e.status === 429) return { answer: 'AI sedang mencapai batas penggunaan. Tunggu sebentar lalu coba lagi.', source: 'error', notice }
         if (e.status === 401) return { answer: 'Sesi login kamu sudah habis. Silakan keluar lalu masuk lagi.', source: 'error' }
         if (e.status === 502) return { answer: 'AI sedang bermasalah. Coba lagi sebentar lagi.', source: 'error', notice }
