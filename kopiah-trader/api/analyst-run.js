@@ -1,4 +1,4 @@
-// Fungsi server Vercel: menjalankan satu siklus sinyal otomatis KOPIAH TRADER ANALIS.
+// Fungsi server Vercel: menjalankan siklus sinyal otomatis KOPIAH TRADER ANALIS untuk semua timeframe.
 // Dipanggil terjadwal (mis. tiap 5 menit) oleh layanan cron dengan header:
 //   Authorization: Bearer <CRON_SECRET>
 //
@@ -9,7 +9,7 @@
 //   VITE_SUPABASE_URL           sudah ada
 
 import { timingSafeEqual } from 'node:crypto'
-import { CONFIG, runCycle } from './_lib/fibSignals.js'
+import { TIMEFRAMES, configFor, runCycle, shouldRun } from './_lib/zoneSignals.js'
 
 const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '')
 
@@ -32,17 +32,46 @@ async function sb(base, key, path, { method = 'GET', body, prefer } = {}) {
   return data
 }
 
-async function fetchCandles(apiKey) {
-  const params = new URLSearchParams({ symbol: CONFIG.providerSymbol, interval: CONFIG.interval, outputsize: '500', timezone: 'UTC', apikey: apiKey })
+async function fetchCandles(apiKey, interval, symbol) {
+  const params = new URLSearchParams({ symbol, interval, outputsize: '500', timezone: 'UTC', apikey: apiKey })
   const res = await fetch(`https://api.twelvedata.com/time_series?${params}`, { signal: AbortSignal.timeout(15000) })
   const raw = (await res.text()).split(apiKey).join('***')
   let data
   try { data = JSON.parse(raw) } catch { throw new Error(`Twelve Data bukan JSON (HTTP ${res.status})`) }
   if (data.status === 'error' || !Array.isArray(data.values)) throw new Error(`Twelve Data: ${data.message || 'respons tidak valid'}`)
+  // Candle harian memakai tanggal saja ("2026-10-16"), yang lain "2026-10-16 15:15:00".
+  const toSec = (d) => Math.floor(Date.parse((d.length <= 10 ? `${d}T00:00:00` : d.replace(' ', 'T')) + 'Z') / 1000)
   return data.values
-    .map((v) => ({ time: Math.floor(Date.parse(v.datetime.replace(' ', 'T') + 'Z') / 1000), open: +v.open, high: +v.high, low: +v.low, close: +v.close }))
+    .map((v) => ({ time: toSec(v.datetime), open: +v.open, high: +v.high, low: +v.low, close: +v.close }))
     .filter((c) => isFinite(c.time) && isFinite(c.high) && isFinite(c.low))
     .sort((a, b) => a.time - b.time)
+}
+
+/** Satu siklus untuk satu timeframe: ambil candle, baca catatan, hitung, simpan. */
+async function runTimeframe(tf, { base, serviceKey, tdKey, nowMs }) {
+  const cfg = configFor(tf)
+  const candles = await fetchCandles(tdKey, cfg.interval, cfg.providerSymbol)
+
+  // Sinyal timeframe ini yang masih mungkin aktif, beserta event-nya (juga dipakai untuk batas harian).
+  const since = new Date(nowMs - (cfg.expireHours + 24) * 3600e3).toISOString()
+  const signals = await sb(base, serviceKey,
+    `analyst_signals?select=*,events:analyst_signal_events(type,event_time,price)&symbol=eq.${cfg.symbol}&timeframe=eq.${tf}&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`)
+
+  const out = runCycle({ candles, nowMs, signals: signals || [], cfg })
+
+  // on_conflict + ignore-duplicates: dua siklus yang tumpang tindih tidak bisa membuat catatan ganda.
+  if (out.newSignals.length) {
+    await sb(base, serviceKey, 'analyst_signals?on_conflict=leg_key,stage', { method: 'POST', body: out.newSignals, prefer: 'resolution=ignore-duplicates,return=minimal' })
+  }
+  if (out.newEvents.length) {
+    await sb(base, serviceKey, 'analyst_signal_events?on_conflict=signal_id,type', { method: 'POST', body: out.newEvents, prefer: 'resolution=ignore-duplicates,return=minimal' })
+  }
+  return {
+    candles: candles.length,
+    newSignals: out.newSignals.map((x) => `${x.direction} ${x.stage} @${x.entry}`),
+    newEvents: out.newEvents.map((e) => e.type),
+    notes: out.notes
+  }
 }
 
 export default async function handler(req, res) {
@@ -56,31 +85,23 @@ export default async function handler(req, res) {
   const expected = Buffer.from(`Bearer ${secret}`)
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return res.status(401).json({ error: 'unauthorized' })
 
-  try {
-    const nowMs = Date.now()
-    const candles = await fetchCandles(tdKey)
+  const nowMs = Date.now()
+  // ?force=1 menjalankan semua timeframe (untuk tes manual); ?tf=1H hanya satu timeframe.
+  const only = String(req.query?.tf || '')
+  const force = req.query?.force === '1' || !!only
+  const all = Object.keys(TIMEFRAMES)
+  const due = all.filter((tf) => (only ? tf === only : force || shouldRun(tf, nowMs)))
+  if (only && !TIMEFRAMES[only]) return res.status(400).json({ error: 'bad_timeframe' })
 
-    // Sinyal beberapa hari terakhir beserta event-nya (cukup untuk evaluasi dan batas harian).
-    const since = new Date(nowMs - 5 * 86400e3).toISOString()
-    const signals = await sb(base, serviceKey,
-      `analyst_signals?select=*,events:analyst_signal_events(type,event_time,price)&symbol=eq.${CONFIG.symbol}&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`)
-
-    const out = runCycle({ candles, nowMs, signals: signals || [] })
-
-    // on_conflict + ignore-duplicates: dua siklus yang tumpang tindih tidak bisa membuat catatan ganda.
-    if (out.newSignals.length) {
-      await sb(base, serviceKey, 'analyst_signals?on_conflict=leg_key,stage', { method: 'POST', body: out.newSignals, prefer: 'resolution=ignore-duplicates,return=minimal' })
-    }
-    if (out.newEvents.length) {
-      await sb(base, serviceKey, 'analyst_signal_events?on_conflict=signal_id,type', { method: 'POST', body: out.newEvents, prefer: 'resolution=ignore-duplicates,return=minimal' })
-    }
-    return res.status(200).json({
-      ok: true, candles: candles.length, lastCandle: candles.at(-1)?.time,
-      newSignals: out.newSignals.map((s) => `${s.direction} ${s.stage} @${s.entry}`),
-      newEvents: out.newEvents.map((e) => `${e.type}`), notes: out.notes
-    })
-  } catch (e) {
-    console.error('analyst-run error:', e && (e.message || e))
-    return res.status(502).json({ error: 'run_failed', detail: String(e && e.message).slice(0, 300) })
-  }
+  const settled = await Promise.allSettled(due.map((tf) => runTimeframe(tf, { base, serviceKey, tdKey, nowMs })))
+  const ran = {}, errors = {}
+  settled.forEach((r, i) => {
+    if (r.status === 'fulfilled') ran[due[i]] = r.value
+    else { errors[due[i]] = String(r.reason && r.reason.message).slice(0, 200); console.error('analyst-run', due[i], errors[due[i]]) }
+  })
+  const failedAll = due.length > 0 && Object.keys(ran).length === 0
+  return res.status(failedAll ? 502 : 200).json({
+    ok: !failedAll, ran, skipped: all.filter((tf) => !due.includes(tf)),
+    ...(Object.keys(errors).length ? { errors } : {})
+  })
 }

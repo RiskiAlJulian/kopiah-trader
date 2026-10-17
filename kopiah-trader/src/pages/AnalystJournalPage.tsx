@@ -5,11 +5,13 @@ import { HAS_SUPABASE } from '../lib/supabaseClient'
 import { deriveStatus } from '../types/analyst'
 
 type Filter = 'ALL' | 'OPEN' | 'TP' | 'SL'
+const TIMEFRAMES = ['ALL', '5M', '15M', '1H', '4H', '1D'] as const
 
 export default function AnalystJournalPage() {
   const [limit, setLimit] = useState(50)
   const [filter, setFilter] = useState<Filter>('ALL')
-  const q = useAnalystSignals(limit)
+  const [tf, setTf] = useState<(typeof TIMEFRAMES)[number]>('ALL')
+  const q = useAnalystSignals(limit, undefined, tf === 'ALL' ? undefined : tf)
   const all = q.data ?? []
 
   const stats = useMemo(() => {
@@ -44,6 +46,11 @@ export default function AnalystJournalPage() {
       <p className="mt-1 text-[11px] text-charcoal/50">Win rate = sinyal yang mencapai minimal TP1 dibagi (yang mencapai TP + yang HIT SL). Sinyal OPEN dan kedaluwarsa tidak dihitung.</p>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
+        {TIMEFRAMES.map((t) => (
+          <button key={t} onClick={() => setTf(t)} className={`rounded-full px-3 py-1 text-xs font-semibold ${tf === t ? 'bg-charcoal text-white' : 'bg-softgray/50 hover:bg-softgray'}`}>{t === 'ALL' ? 'Semua TF' : t}</button>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {([['ALL', 'Semua'], ['OPEN', 'OPEN'], ['TP', 'DONE TP'], ['SL', 'HIT SL']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-semibold ${filter === k ? 'bg-maroon text-white' : 'bg-softgray/50 hover:bg-softgray'}`}>{label}</button>
         ))}
@@ -51,7 +58,7 @@ export default function AnalystJournalPage() {
 
       <div className="mt-3 space-y-2">
         {q.isPending && HAS_SUPABASE && Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-softgray/50" />)}
-        {q.isSuccess && shown.length === 0 && <p className="rounded-xl border border-softgray bg-cream-card p-4 text-sm text-charcoal/70">{all.length === 0 ? 'Belum ada sinyal. Sinyal muncul otomatis saat harga menyentuh area entry Fibonacci.' : 'Tidak ada sinyal untuk filter ini.'}</p>}
+        {q.isSuccess && shown.length === 0 && <p className="rounded-xl border border-softgray bg-cream-card p-4 text-sm text-charcoal/70">{all.length === 0 ? 'Belum ada sinyal. Sinyal muncul otomatis saat harga masuk ke area entry yang valid.' : 'Tidak ada sinyal untuk filter ini.'}</p>}
         {shown.map((s) => <SignalCard key={s.id} s={s} />)}
       </div>
 
@@ -60,7 +67,7 @@ export default function AnalystJournalPage() {
       )}
 
       <p className="mt-6 text-[11px] text-charcoal/50">
-        Hanya untuk edukasi dan bukan saran investasi. Sinyal dibuat otomatis dari rumus (Fibonacci, swing) tanpa jaminan profit. Waktu event adalah waktu candle M15 yang menyentuh level. Jika satu candle menyentuh SL dan TP sekaligus, dihitung SL lebih dulu.
+        Hanya untuk edukasi dan bukan saran investasi. Sinyal dibuat otomatis dari rumus (struktur harga, swing, area Discount/Premium) tanpa jaminan profit. Waktu event adalah waktu candle yang menyentuh level, sesuai timeframe sinyalnya. Jika satu candle menyentuh SL dan TP sekaligus, dihitung SL lebih dulu.
       </p>
     </div>
   )

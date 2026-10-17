@@ -68,8 +68,8 @@ dan tambahkan `https://DOMAIN-KAMU/reset-password` (serta `http://localhost:5173
 untuk tes lokal) ke **Redirect URLs**. Tanpa ini, tautan di email tidak akan mengarah ke halaman reset.
 
 
-## Sinyal otomatis dan Jurnal Analis (Fibonacci)
-1. **Database**: Supabase > SQL Editor > New query > tempel isi `supabase/analyst-signals.sql` > Run.
+## Sinyal otomatis dan Jurnal Analis
+1. **Database**: Supabase > SQL Editor > New query > tempel isi `supabase/analyst-signals.sql` > Run. Skrip ini membuat ulang tabel dan menolak berjalan jika jurnal sudah berisi sinyal.
 2. **Vercel > Environment Variables** (Production), tanpa awalan `VITE_`:
    - `SUPABASE_SERVICE_ROLE_KEY`: dari Supabase > Settings > API > `service_role` (RAHASIA, aktifkan Sensitive).
    - `CRON_SECRET`: kata sandi acak panjang buatanmu sendiri.
@@ -80,5 +80,8 @@ untuk tes lokal) ke **Redirect URLs**. Tanpa ini, tautan di email tidak akan men
 4. **Cek**: dari Git Bash, `curl -H "Authorization: Bearer ISI_CRON_SECRET" https://DOMAIN-KAMU/api/analyst-run`
    harus menjawab `{"ok":true,...}`.
 
-Aturan strategi ada di bagian `CONFIG` dan komentar kepala file `api/_lib/fibSignals.js`.
-Kuota Twelve Data gratis 800 request/hari; penjadwal tiap 5 menit memakai sekitar 288 per hari.
+Aturan strategi ada di bagian `CONFIG` dan komentar kepala file `api/_lib/zoneSignals.js`.
+Sinyal berjalan di 5 timeframe (5M, 15M, 1H, 4H, 1D). Penjadwal tetap tiap 5 menit; server sendiri yang mengatur
+seberapa sering tiap timeframe diambil (5M tiap 5 menit, 15M tiap 15, 1H tiap 30, 4H tiap 60, 1D tiap 240 menit),
+sehingga total sekitar 460 request Twelve Data per hari dari kuota gratis 800. Tes manual semua timeframe sekaligus:
+tambahkan `?force=1` di akhir URL, atau satu timeframe saja dengan `?tf=1H`.

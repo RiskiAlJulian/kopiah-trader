@@ -43,7 +43,7 @@ export default function Analysis({ id }: { id: string }) {
         ))}
       </div>
 
-      {id === 'XAUUSD' && <AutoSignals />}
+      {id === 'XAUUSD' && <AutoSignals tf={tf} />}
 
       {q.isPending && <div className="mt-4 space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-xl bg-softgray/50" />)}</div>}
 
@@ -183,15 +183,15 @@ function RiskSection({ id, price, decimals, plan }: { id: string; price: number;
   )
 }
 
-/** Sinyal otomatis Fibonacci (dibuat server, dicatat permanen di Jurnal Analis). Hanya untuk XAUUSD M15. */
-function AutoSignals() {
-  const q = useAnalystSignals(3, 'XAUUSD')
+/** Sinyal otomatis (dibuat server, dicatat permanen di Jurnal Analis). Saat ini untuk XAUUSD, mengikuti timeframe yang dipilih. */
+function AutoSignals({ tf }: { tf: string }) {
+  const q = useAnalystSignals(3, 'XAUUSD', tf)
   const list = q.data ?? []
   return (
-    <Section title="Sinyal Otomatis (XAUUSD · M15 · Fibonacci)">
+    <Section title={`Sinyal Otomatis (XAUUSD · ${tf})`}>
       {q.isPending && <div className="h-16 animate-pulse rounded-xl bg-softgray/50" />}
       {q.isError && <p className="text-xs text-charcoal/60">Sinyal belum bisa dimuat.</p>}
-      {q.isSuccess && list.length === 0 && <p className="text-xs text-charcoal/60">Belum ada sinyal. Sinyal muncul otomatis saat harga menyentuh Fib 0.705 dari leg swing terbaru.</p>}
+      {q.isSuccess && list.length === 0 && <p className="text-xs text-charcoal/60">Belum ada sinyal di timeframe ini. Sinyal muncul otomatis saat harga masuk ke area entry yang valid.</p>}
       {list.map((s) => <SignalCard key={s.id} s={s} compact />)}
       <Link to="/analyst-journal" className="inline-block pt-1 text-xs font-semibold text-maroon">Lihat semua di Jurnal Analis →</Link>
     </Section>
