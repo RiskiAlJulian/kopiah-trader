@@ -8,6 +8,7 @@
 //   TWELVE_DATA_API_KEY         sudah ada
 //   VITE_SUPABASE_URL           sudah ada
 
+import { timingSafeEqual } from 'node:crypto'
 import { CONFIG, runCycle } from './_lib/fibSignals.js'
 
 const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '')
@@ -50,7 +51,10 @@ export default async function handler(req, res) {
   const serviceKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY)
   const tdKey = clean(process.env.TWELVE_DATA_API_KEY)
   if (!secret || !base || !serviceKey || !tdKey) return res.status(503).json({ error: 'not_configured' })
-  if (req.headers?.authorization !== `Bearer ${secret}`) return res.status(401).json({ error: 'unauthorized' })
+  // Spasi/enter di ujung (sering ikut saat copy-paste di layanan cron) diabaikan; perbandingan tahan serangan timing.
+  const given = Buffer.from(String(req.headers?.authorization || '').trim())
+  const expected = Buffer.from(`Bearer ${secret}`)
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return res.status(401).json({ error: 'unauthorized' })
 
   try {
     const nowMs = Date.now()
